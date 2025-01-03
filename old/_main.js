@@ -20,8 +20,8 @@ async function QueryPokemonImage(name) {
 }
 
 async function displayPokemon(name) {
-	// First we must find the index.html image container element.
-	const img_container = document.getElementById("image-container")
+	// First we must find the _index.html image container element.
+	const img_container = document.getElementById("pokemon-container")
 
 	// then we wil update the img element inside with the correct url
 	const img = document.querySelector("#pokemon-image");

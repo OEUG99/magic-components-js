@@ -1,3 +1,5 @@
-import ComponentHandler from "./lib/componentHandler";
+import MagicDOM from "./lib/MagicDOM";
 
-const handler = new ComponentHandler()
+const mdom = new MagicDOM()
+
+let html = "<div></div>"

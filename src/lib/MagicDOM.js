@@ -2,15 +2,21 @@ import AbstractComponent from "./AbstractComponent";
 
 class TreeNode {
     // Nodes used for the vdom.
-    constructor(tagName, props) {
+    constructor(tagName, props, textContent) {
         this.tagName = tagName;
         this.props = props;
+        this.textContent = textContent;
         this.children = [];
     }
 
     // Add a child node
     addChildren(child) {
         this.children.push(child);
+    }
+
+    // set text
+    setText(text) {
+        this.textContent = text;
     }
 
 }
@@ -38,38 +44,91 @@ class MagicDOM {
 
 
     async createElement(tagName, props = {}, ...children) {
-        // creates a node that can be used in the vdom
-        // mirrors standard `document.addElement` except element tags are not forced to be capitalized.
-        // This allows for us to determine what is a component or not via components having capitalized
-        // names.
         const element = new TreeNode(tagName, props);
-        children.forEach(child => {
-            if (typeof child === 'string') {
-                // Handle text nodes
-                element.addChildren(new TreeNode('#text', { textContent: child }));
+        let textAccumulator = ""; // Accumulator for strings
+
+        for (const child of children.flat()) {
+            if (typeof child === "string") {
+                textAccumulator += child; // Accumulate text
             } else if (child instanceof TreeNode) {
-                // Handle child nodes
-                element.addChildren(child);
+                element.addChildren(child); // Directly add TreeNode instances
+            } else if (Array.isArray(child)) {
+                // Recursively handle arrays
+                for (const nestedChild of child) {
+                    const processedChild = await this.createElement(
+                        nestedChild.tagName || "div",
+                        nestedChild.props || {},
+                        ...(nestedChild.children || [])
+                    );
+                    element.addChildren(processedChild);
+                }
+            } else if (child && typeof child === "object") {
+                // Recursively handle raw object as virtual element definition
+                const processedChild = await this.createElement(
+                    child.tagName,
+                    child.props || {},
+                    ...(child.children || [])
+                );
+                element.addChildren(processedChild);
+            } else {
+                console.warn("Unexpected child type:", child);
             }
-        });
+        }
+
+        // Set accumulated text content
+        if (textAccumulator) {
+            element.setText(textAccumulator);
+        }
+
         return element;
     }
 
-    async render(node = this.tree) {
 
-        // todo I need to make sure this is proper and preserving parent-child relationships.
 
-        // Processing all nodes, but skipping the dumby node.
-        if (node.tagName !== "dumby") {
-            //console.log(node.tagName); // Process the node
-            let parentNode =  document.createElement(node.tagName, node.props);
-            this.dom.appendChild(parentNode);
+    async render(node = this.tree, containerElement = this.dom) {
+        // Handle `dumby` node as the root
+        if (node.tagName === "dumby") {
+            if (node.children.length === 0) {
+                console.error("The root node (dumby) has no children.");
+                return;
+            }
+            node = node.children[0]; // Assume single child for the `dumby` node
         }
 
+        // Create the current DOM element
+        let parentElement;
+        try {
+            parentElement = document.createElement(node.tagName);
+
+            // Set properties (attributes)
+            if (node.props) {
+                for (const [key, value] of Object.entries(node.props)) {
+                    parentElement.setAttribute(key, value);
+                }
+            }
+
+            // Set text content
+            if (node.textContent) {
+                parentElement.textContent = node.textContent;
+            }
+
+            // Append the current element to the container
+            containerElement.appendChild(parentElement);
+        } catch (e) {
+            console.error("Error creating element:", e);
+            return;
+        }
+
+        // Recursively render children
         for (const child of node.children) {
-            await this.render(child); // Recursively visit each child
+            await this.render(child, parentElement);
         }
 
+        // Only clear and append once for the root call
+        if (containerElement === this.dom) {
+            this.dom.innerHTML = ""; // Clear the existing DOM content
+            this.dom.appendChild(parentElement);
+        }
     }
 }
 

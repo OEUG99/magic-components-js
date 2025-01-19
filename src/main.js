@@ -4,6 +4,20 @@ import Home from "./components/Home";
 
 
 // Creating elements independently
-let test = await magicDOM.createElement('h1', null, "test")
+// basic element test
+// let tree = await magicDOM.createElement('h1', [], ['Hello, World!', "test"])
 
-await magicDOM.render()
+// emebeded test
+let tree = await magicDOM.createElement('h1', {style: "color:red",},
+    [
+        'Hello, World!',
+        'test',
+        await magicDOM.createElement('h2', {style: "color:blue" },
+            [
+                'This is an h2 inside h1!']
+        )
+    ]
+);
+
+
+await magicDOM.render(tree)
